@@ -9,9 +9,9 @@ def get_semantic_roles(doc: Doc):
         if token.dep_ == "ROOT" and token.pos_ == "VERB":
             action = token.lemma_
         elif token.dep_ in ["nsubj", "nsubjpass"] and not agent:
-            agent = token.text
+            agent = token.text.lower()
         elif token.dep_ in ["dobj", "pobj"] and not patient:
-            patient = token.text
+            patient = token.text.lower()
     return agent, action, patient
 
 def detect_role_reversal(doc1: Doc, doc2: Doc) -> float:
@@ -32,12 +32,16 @@ def detect_role_reversal(doc1: Doc, doc2: Doc) -> float:
     return 0
 
 def detect_negation_mismatch(doc1: Doc, doc2: Doc) -> bool:
-    neg1 = any(token.dep_ == "neg" for token in doc1)
-    neg2 = any(token.dep_ == "neg" for token in doc2)
-    return neg1 != neg2
+    def has_negation(doc):
+        for token in doc:
+            if token.dep_ == "neg" or token.lower_ in ["no", "not", "never", "neither", "nor", "without", "n't", "nothing" ]:
+                return True
+        return False
+
+    return has_negation(doc1) != has_negation(doc2)
 
 def is_temporal(word: str) -> bool:
-    temporal_indicators = ["year", "month", "week", "day", "tomorrow", "yesterday", "next", "last", "future", "past"]
+    temporal_indicators = ["year", "month", "week", "day", "tomorrow", "yesterday", "next", "last", "future", "past", "now", "then", "soon", "later", "earlier", "after", "before", "when", "while", "during", "until", "since", "ago", "today", "tonight", "morning", "evening", "night", "hour", "minute", "second", "moment", "period", "time", "season", "spring", "summer", "fall", "autumn", "winter", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "dawn", "dusk", "noon", "midnight", "early", "late", "nowadays", "currently", "recently", "previously", "formerly", "suddenly", "immediately", "finally", "eventually", "always", "never", "sometimes", "often", "rarely", "seldom", "usually", "frequently", "occasionally", "constantly", "continuously", "periodically", "regularly", "daily", "weekly", "monthly", "annually", "hourly", "minutely", "secondly", "momentarily", "temporarily", "permanently", "briefly", "shortly", "long", "forever", "eternally"]
     return any(indicator in word.lower() for indicator in temporal_indicators)
 
 def detect_temporal_shift(doc1: Doc, doc2: Doc) -> bool:

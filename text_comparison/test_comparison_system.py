@@ -41,7 +41,7 @@ def run_tests():
          "The mouse chased the cat around the house"),
         ("similarity", 
          "The cat chased the mouse around the house", 
-         "The cat didnot chase the mouse around the house"),
+         "The cat did not chase the mouse around the house"),
         ("summarization",
          "Despite heavy rain, the outdoor concert attracted a large crowd of enthusiastic fans who danced and sang along to every song.",
          "Many people attended a rainy concert."),
