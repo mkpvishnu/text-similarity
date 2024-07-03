@@ -2,8 +2,8 @@ import spacy
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from typing import Dict, Any
-from .utils import detect_role_reversal, detect_negation_mismatch, detect_temporal_shift, detect_tense_change, calculate_entity_preservation
-from .scoring_functions import score_summarization, score_similarity, score_paraphrase, score_contradiction
+from utils import detect_role_reversal, detect_negation_mismatch, detect_temporal_shift, detect_tense_change, calculate_entity_preservation
+from scoring_functions import score_summarization, score_similarity, score_paraphrase, score_contradiction
 
 class TextComparisonSystem:
     def __init__(self, nlp_model="en_core_web_lg", sentence_model='sentence-transformers/all-MiniLM-L6-v2'):
