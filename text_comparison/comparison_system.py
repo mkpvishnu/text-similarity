@@ -1,163 +1,141 @@
 # text_comparison/comparison_system.py
 
-import spacy
-import numpy as np
-from sentence_transformers import SentenceTransformer
 from typing import Dict, Any
-from utils import detect_role_reversal, detect_negation_mismatch, detect_temporal_shift, detect_tense_change, calculate_entity_preservation
-from scoring_functions import score_summarization, score_similarity, score_paraphrase, score_contradiction
-from semantic_analysis import SemanticAnalyzer, calculate_semantic_similarity, calculate_sense_preservation
-from transformers import AutoTokenizer, AutoModel
-import torch
+from text_analyzer import TextAnalyzer
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+import numpy as np
 
 class TextComparisonSystem:
-    def __init__(self, nlp_model="en_core_web_lg", sentence_model='sentence-transformers/all-MiniLM-L6-v2', bert_model='sentence-transformers/all-MiniLM-L12-v2'):
-        self.nlp = spacy.load(nlp_model)
-        self.sentence_model = SentenceTransformer(sentence_model)
-        self.bert_tokenizer = AutoTokenizer.from_pretrained(bert_model)
-        self.bert_model = AutoModel.from_pretrained(bert_model)
-        self.semantic_analyzer = SemanticAnalyzer(bert_model)
-        self.scoring_functions = {
-            "summarization": score_summarization,
-            "similarity": score_similarity,
-            "paraphrase": score_paraphrase,
-            "contradiction": score_contradiction
+    def __init__(self):
+        self.analyzer = TextAnalyzer()
+        self.weights = {
+            'semantic_similarity': 0.2,
+            'syntactic_similarity': 0.1,
+            'entity_recognition': 0.1,
+            'topic_consistency': 0.1,
+            'style_similarity': 0.1,
+            'coherence_analysis': 0.1,
+            'factual_consistency': 0.1,
+            'contextual_consistency': 0.1,
+            'named_entity_consistency': 0.1
         }
 
-    def get_bert_embedding(self, text):
-        inputs = self.bert_tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-        with torch.no_grad():
-            outputs = self.bert_model(**inputs)
-        return outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
+    def compare_texts(self, text1: str, text2: str) -> Dict[str, Any]:
+        if text1 == text2:
+            return {metric: 1.0 for metric in [
+                'voice_change', 'role_reversal', 'negation', 'number_change', 'synonym_usage',
+                'anecdote_detection', 'temporal_shift', 'paragraph_structure', 'entity_recognition',
+                'sentiment_consistency', 'semantic_similarity', 'syntactic_similarity',
+                'dependency_similarity', 'readability_comparison', 'topic_consistency',
+                'style_similarity', 'coherence_analysis', 'information_density',
+                'argument_structure', 'contextual_consistency', 'factual_consistency',
+                'figurative_language', 'discourse_markers', 'lexical_chain_similarity',
+                'coreference_consistency', 'hedging_language', 'rhetorical_structure',
+                'subjectivity_analysis', 'named_entity_consistency', 'overall_similarity'
+            ]}
 
-    def compare_texts(self, text1: str, text2: str, task: str, custom_penalties: Dict[str, float] = None) -> Dict[str, Any]:
-        doc1 = self.nlp(text1)
-        doc2 = self.nlp(text2)
+        doc1 = self.analyzer.safe_process(text1)
+        doc2 = self.analyzer.safe_process(text2)
 
-        embeddings = self.sentence_model.encode([text1, text2])
-        base_score = np.dot(embeddings[0], embeddings[1]) / (np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1]))
+        paragraphs1 = self.analyzer.split_into_paragraphs(text1)
+        paragraphs2 = self.analyzer.split_into_paragraphs(text2)
 
-        bert_emb1 = self.get_bert_embedding(text1)
-        bert_emb2 = self.get_bert_embedding(text2)
-        bert_score = np.dot(bert_emb1, bert_emb2) / (np.linalg.norm(bert_emb1) * np.linalg.norm(bert_emb2))
-
-        metrics = {
-            "role_reversal": detect_role_reversal(doc1, doc2),
-            "negation_mismatch": detect_negation_mismatch(doc1, doc2),
-            "temporal_shift": detect_temporal_shift(doc1, doc2),
-            "tense_change": detect_tense_change(doc1, doc2),
-            "entity_preservation": calculate_entity_preservation(doc1, doc2),
-            "length_ratio": len(doc2) / len(doc1),
-            "key_info_preservation": self.calculate_key_info_preservation(doc1, doc2),
-            "abstractiveness": self.calculate_abstractiveness(doc1, doc2),
-            "structural_similarity": self.calculate_structural_similarity(doc1, doc2),
-            "semantic_similarity": calculate_semantic_similarity(doc1, doc2, self.semantic_analyzer),
-            "sense_preservation": calculate_sense_preservation(doc1, doc2, self.semantic_analyzer)
+        results = {
+            'voice_change': self.analyzer.detect_voice_change(doc1, doc2),
+            'role_reversal': self.analyzer.detect_role_reversal(doc1, doc2),
+            'negation': self.analyzer.detect_negation_change(doc1, doc2),
+            'number_change': self.analyzer.detect_number_change(doc1, doc2),
+            'synonym_usage': self.analyzer.detect_synonym_usage(doc1, doc2),
+            'anecdote_detection': self.analyzer.detect_anecdote(doc1, doc2),
+            'temporal_shift': self.analyzer.detect_temporal_shift(doc1, doc2),
+            'paragraph_structure': self.analyzer.compare_paragraph_structure(paragraphs1, paragraphs2),
+            'entity_recognition': self.analyzer.compare_entities(doc1, doc2),
+            'sentiment_consistency': self.analyzer.compare_sentiment(doc1, doc2),
+            'semantic_similarity': self.analyzer.semantic_similarity(text1, text2),
+            'syntactic_similarity': self.analyzer.syntactic_similarity(doc1, doc2),
+            'dependency_similarity': self.analyzer.dependency_similarity(doc1, doc2),
+            'readability_comparison': self.analyzer.compare_readability(text1, text2),
+            'topic_consistency': self.analyzer.compare_topics(text1, text2),
+            'style_similarity': self.analyzer.compare_writing_style(text1, text2),
+            'coherence_analysis': self.analyzer.analyze_coherence(paragraphs1, paragraphs2),
+            'information_density': self.analyzer.compare_information_density(doc1, doc2),
+            'argument_structure': self.analyzer.compare_argument_structure(doc1, doc2),
+            'contextual_consistency': self.analyzer.analyze_contextual_consistency(doc1, doc2),
+            'factual_consistency': self.analyzer.compare_factual_consistency(doc1, doc2),
+            'figurative_language': self.analyzer.compare_figurative_language(doc1, doc2),
+            'discourse_markers': self.analyzer.compare_discourse_markers(doc1, doc2),
+            'lexical_chain_similarity': self.analyzer.compare_lexical_chains(doc1, doc2),
+            'hedging_language': self.analyzer.compare_hedging(doc1, doc2),
+            'rhetorical_structure': self.analyzer.compare_rhetorical_structure(doc1, doc2),
+            'subjectivity_analysis': self.analyzer.compare_subjectivity(doc1, doc2),
+            'named_entity_consistency': self.analyzer.compare_named_entities(doc1, doc2)
         }
 
-        if task not in self.scoring_functions:
-            raise ValueError(f"Unknown task: {task}")
+        if hasattr(self.analyzer, 'coref_available') and self.analyzer.coref_available:
+            results['coreference_consistency'] = self.analyzer.compare_coreference(doc1, doc2)
+        else:
+            results['coreference_consistency'] = None
 
-        scoring_function = self.scoring_functions[task]
-        final_score = scoring_function(base_score, bert_score, metrics, custom_penalties)
+        # Handle potential NaN or inf values
+        for key, value in results.items():
+            if isinstance(value, float) and (np.isnan(value) or np.isinf(value)):
+                results[key] = 0.0  # or another appropriate default value
 
-        return {"base_score": base_score, "bert_score": bert_score, **metrics, "final_score": final_score}
 
-    def calculate_key_info_preservation(self, doc1, doc2):
-        # Extract key elements (subjects, objects, main verbs) from both documents
-        key_elements1 = set(self._extract_key_elements(doc1))
-        key_elements2 = set(self._extract_key_elements(doc2))
+        # Calculate overall similarity score using weighted average
+        weighted_scores = [
+            (results[metric], weight) 
+            for metric, weight in self.weights.items() 
+            if metric in results and isinstance(results[metric], (int, float)) and not np.isnan(results[metric]) and not np.isinf(results[metric])
+        ]
         
-        # Calculate the overlap
-        overlap = len(key_elements1.intersection(key_elements2))
-        total = len(key_elements1)
-        
-        return overlap / total if total > 0 else 1.0
+        if weighted_scores:
+            results['overall_similarity'] = sum(score * weight for score, weight in weighted_scores) / sum(weight for _, weight in weighted_scores)
+        else:
+            results['overall_similarity'] = 0
 
-    def _extract_key_elements(self, doc):
-        elements = []
-        for token in doc:
-            if token.dep_ in ["nsubj", "dobj", "pobj"] or (token.pos_ == "VERB" and token.dep_ == "ROOT"):
-                elements.append(token.lemma_)
-        return elements
+        return results
 
-    def calculate_abstractiveness(self, doc1, doc2):
-        # Calculate n-gram overlap
-        n_gram_overlap = self._calculate_n_gram_overlap(doc1, doc2)
+    def interpret_results(self, results: Dict[str, Any]) -> str:
+        """
+        Interpret the comparison results and provide a human-readable summary.
         
-        # Calculate the ratio of new words in doc2
-        words1 = set(token.lower_ for token in doc1)
-        words2 = set(token.lower_ for token in doc2)
-        new_words_ratio = len(words2 - words1) / len(words2) if len(words2) > 0 else 0
+        Args:
+            results (Dict[str, Any]): The dictionary of comparison results
         
-        # Combine these metrics (you can adjust the weights)
-        abstractiveness = (1 - n_gram_overlap) * 0.7 + new_words_ratio * 0.3
+        Returns:
+            str: A human-readable interpretation of the results
+        """
+        interpretation = "Text Comparison Results:\n\n"
         
-        return abstractiveness
+        for key, value in results.items():
+            if isinstance(value, float):
+                interpretation += f"{key.replace('_', ' ').title()}: {value:.2f}\n"
+            else:
+                interpretation += f"{key.replace('_', ' ').title()}: {value}\n"
+        
+        interpretation += f"\nOverall Similarity: {results['overall_similarity']:.2f}\n"
+        
+        if results['overall_similarity'] > 0.8:
+            interpretation += "\nInterpretation: The texts are highly similar."
+        elif results['overall_similarity'] > 0.6:
+            interpretation += "\nInterpretation: The texts have moderate similarity."
+        elif results['overall_similarity'] > 0.4:
+            interpretation += "\nInterpretation: The texts have some similarities but significant differences."
+        else:
+            interpretation += "\nInterpretation: The texts are largely dissimilar."
+        
+        return interpretation
 
-    def _calculate_n_gram_overlap(self, doc1, doc2, n=3):
-        def get_n_grams(doc, n):
-            return set(' '.join(token.lower_ for token in doc[i:i+n]) for i in range(len(doc)-n+1))
-        
-        n_grams1 = get_n_grams(doc1, n)
-        n_grams2 = get_n_grams(doc2, n)
-        
-        overlap = len(n_grams1.intersection(n_grams2))
-        total = len(n_grams2)
-        
-        return overlap / total if total > 0 else 0
-
-    def calculate_structural_similarity(self, doc1, doc2):
-        # Compare dependency structures
-        dep_sim = self._compare_dependency_structures(doc1, doc2)
-        
-        # Compare POS tag sequences
-        pos_sim = self._compare_pos_sequences(doc1, doc2)
-        
-        # Combine these metrics (you can adjust the weights)
-        structural_similarity = dep_sim * 0.6 + pos_sim * 0.4
-        
-        return structural_similarity
-
-    def _compare_dependency_structures(self, doc1, doc2):
-        def get_dep_structure(doc):
-            return set((token.dep_, token.head.dep_) for token in doc)
-        
-        struct1 = get_dep_structure(doc1)
-        struct2 = get_dep_structure(doc2)
-        
-        similarity = len(struct1.intersection(struct2)) / max(len(struct1), len(struct2))
-        return similarity
-
-    def _compare_pos_sequences(self, doc1, doc2):
-        def get_pos_sequence(doc):
-            return ' '.join(token.pos_ for token in doc)
-        
-        seq1 = get_pos_sequence(doc1)
-        seq2 = get_pos_sequence(doc2)
-        
-        # Use Levenshtein distance to compare sequences
-        distance = self._levenshtein_distance(seq1, seq2)
-        max_length = max(len(seq1), len(seq2))
-        similarity = 1 - (distance / max_length)
-        
-        return similarity
-
-    def _levenshtein_distance(self, s1, s2):
-        if len(s1) < len(s2):
-            return self._levenshtein_distance(s2, s1)
-
-        if len(s2) == 0:
-            return len(s1)
-
-        previous_row = range(len(s2) + 1)
-        for i, c1 in enumerate(s1):
-            current_row = [i + 1]
-            for j, c2 in enumerate(s2):
-                insertions = previous_row[j + 1] + 1
-                deletions = current_row[j] + 1
-                substitutions = previous_row[j] + (c1 != c2)
-                current_row.append(min(insertions, deletions, substitutions))
-            previous_row = current_row
-
-        return previous_row[-1]
+# Usage example
+if __name__ == "__main__":
+    comparator = TextComparisonSystem()
+    
+    text1 = "The quick brown fox jumps over the lazy dog. It was a sunny day in the forest."
+    text2 = "The quick brown fox jumps over the lazy cat. It was a sunny day in the forest."
+    
+    results = comparator.compare_texts(text1, text2)
+    interpretation = comparator.interpret_results(results)
+    
+    print(interpretation)

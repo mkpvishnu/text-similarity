@@ -12,25 +12,25 @@ def minilm_similarity(model, text1, text2):
     embeddings = model.encode([text1, text2])
     return np.dot(embeddings[0], embeddings[1]) / (np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1]))
 
-def bert_similarity(tokenizer, model, text1, text2):
-    inputs1 = tokenizer(text1, return_tensors='pt', padding=True, truncation=True)
-    inputs2 = tokenizer(text2, return_tensors='pt', padding=True, truncation=True)
+# def bert_similarity(tokenizer, model, text1, text2):
+#     inputs1 = tokenizer(text1, return_tensors='pt', padding=True, truncation=True)
+#     inputs2 = tokenizer(text2, return_tensors='pt', padding=True, truncation=True)
     
-    with torch.no_grad():
-        outputs1 = model(**inputs1)
-        outputs2 = model(**inputs2)
+#     with torch.no_grad():
+#         outputs1 = model(**inputs1)
+#         outputs2 = model(**inputs2)
     
-    embeddings1 = outputs1.last_hidden_state.mean(dim=1)
-    embeddings2 = outputs2.last_hidden_state.mean(dim=1)
+#     embeddings1 = outputs1.last_hidden_state.mean(dim=1)
+#     embeddings2 = outputs2.last_hidden_state.mean(dim=1)
     
-    similarity = torch.nn.functional.cosine_similarity(embeddings1, embeddings2)
-    return similarity.item()
+#     similarity = torch.nn.functional.cosine_similarity(embeddings1, embeddings2)
+#     return similarity.item()
 
 def run_tests():
     comparison_system = TextComparisonSystem()
     minilm_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-    bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    bert_model = BertModel.from_pretrained('bert-base-uncased')
+    # bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    # bert_model = BertModel.from_pretrained('bert-base-uncased')
 
     test_cases = [
         ("summarization", 
@@ -69,44 +69,47 @@ def run_tests():
         print(f"\nTask: {task}")
         print(f"Text 1: {text1}")
         print(f"Text 2: {text2}")
+        comparator = TextComparisonSystem()
 
-        result = comparison_system.compare_texts(text1, text2, task)
+        results = comparator.compare_texts(text1, text2)
+        interpretation = comparator.interpret_results(results)
+    
+        print(interpretation)
+
         minilm_score = minilm_similarity(minilm_model, text1, text2)
-        bert_score = bert_similarity(bert_tokenizer, bert_model, text1, text2)
-
-        print(f"Our model score: {result['final_score']:.4f}")
+        #bert_score = bert_similarity(bert_tokenizer, bert_model, text1, text2)
         print(f"MiniLM score: {minilm_score:.4f}")
-        print(f"BERT score: {bert_score:.4f}")
+        #print(f"BERT score: {bert_score:.4f}")
 
-        if task == "contradiction":
-            print("Better than baselines:", result['final_score'] > minilm_score and result['final_score'] > bert_score)
-        else:
-            print("Close to or better than baselines:", 
-                  abs(result['final_score'] - minilm_score) < 0.1 or result['final_score'] < minilm_score,
-                  abs(result['final_score'] - bert_score) < 0.1 or result['final_score'] < bert_score)
+        # if task == "contradiction":
+        #     print("Better than baselines:", result['final_score'] > minilm_score and result['final_score'] > bert_score)
+        # else:
+        #     print("Close to or better than baselines:", 
+        #           abs(result['final_score'] - minilm_score) < 0.1 or result['final_score'] < minilm_score,
+        #           abs(result['final_score'] - bert_score) < 0.1 or result['final_score'] < bert_score)
 
     # Test custom penalties
-    text1 = "The cat chased the mouse."
-    text2 = "The mouse was chased by the cat."
+    # text1 = "The cat chased the mouse."
+    # text2 = "The mouse was chased by the cat."
     
-    print("\nTesting custom penalties:")
-    print(f"Text 1: {text1}")
-    print(f"Text 2: {text2}")
+    # print("\nTesting custom penalties:")
+    # print(f"Text 1: {text1}")
+    # print(f"Text 2: {text2}")
 
-    default_result = comparison_system.compare_texts(text1, text2, "similarity")
-    custom_result = comparison_system.compare_texts(text1, text2, "similarity", 
-                                                    custom_penalties={"role_reversal": 0.1})
+    # default_result = comparison_system.compare_texts(text1, text2, "similarity")
+    # custom_result = comparison_system.compare_texts(text1, text2, "similarity", 
+    #                                                 custom_penalties={"role_reversal": 0.1})
     
-    print(f"Default score: {default_result['final_score']:.4f}")
-    print(f"Custom penalties score: {custom_result['final_score']:.4f}")
-    print("Custom penalties improved score:", custom_result['final_score'] > default_result['final_score'])
+    # print(f"Default score: {default_result['final_score']:.4f}")
+    # print(f"Custom penalties score: {custom_result['final_score']:.4f}")
+    # print("Custom penalties improved score:", custom_result['final_score'] > default_result['final_score'])
 
-    # Test invalid task
-    try:
-        comparison_system.compare_texts("Text 1", "Text 2", "invalid_task")
-    except ValueError as e:
-        print("\nTesting invalid task:")
-        print("Correctly raised ValueError:", str(e))
+    # # Test invalid task
+    # try:
+    #     comparison_system.compare_texts("Text 1", "Text 2", "invalid_task")
+    # except ValueError as e:
+    #     print("\nTesting invalid task:")
+    #     print("Correctly raised ValueError:", str(e))
 
 if __name__ == "__main__":
     run_tests()
