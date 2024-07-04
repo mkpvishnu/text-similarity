@@ -19,6 +19,7 @@ import math
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import pipeline
+from functools import lru_cache
 
 
 nltk.download('wordnet')
@@ -29,9 +30,7 @@ nltk.download('stopwords')
 class TextAnalyzer:
     def __init__(self):
         self.nlp = spacy.load('en_core_web_trf')
-        self.sentence_model = SentenceTransformer('all-mpnet-base-v2')  # More powerful than 'all-MiniLM-L6-v2'
-        self.zero_shot_classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-        self.ner_model = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")
+        self.sentence_model = SentenceTransformer('all-mpnet-base-v2')
 
         try:
             import neuralcoref
@@ -40,6 +39,10 @@ class TextAnalyzer:
         except ImportError:
             print("Neuralcoref not available. Coreference resolution will be skipped.")
             self.coref_available = False
+
+    @lru_cache(maxsize=1000)
+    def get_embedding(self, text: str) -> np.ndarray:
+        return self.sentence_model.encode(text, show_progress_bar=False)
 
     def analyze(self, text1: str, text2: str) -> Dict[str, Any]:
         doc1 = self.safe_process(text1)
@@ -143,13 +146,16 @@ class TextAnalyzer:
         words1 = [token.text.lower() for token in doc1 if not token.is_stop and token.is_alpha]
         words2 = [token.text.lower() for token in doc2 if not token.is_stop and token.is_alpha]
         
-        embeddings1 = self.sentence_model.encode(words1)
-        embeddings2 = self.sentence_model.encode(words2)
+        if not words1 or not words2:
+            return 0.0
+        
+        embeddings1 = self.sentence_model.encode(words1, show_progress_bar=False)
+        embeddings2 = self.sentence_model.encode(words2, show_progress_bar=False)
         
         similarity_matrix = cosine_similarity(embeddings1, embeddings2)
         max_similarities = np.max(similarity_matrix, axis=1)
         
-        return np.mean(max_similarities)
+        return float(np.mean(max_similarities))
 
     def detect_anecdote(self, doc1: Doc, doc2: Doc) -> float:
         personal_pronouns = set(['I', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours'])
@@ -192,22 +198,15 @@ class TextAnalyzer:
         return (len_similarity + count_similarity) / 2
 
     def compare_entities(self, doc1: Doc, doc2: Doc) -> float:
-        text1 = doc1.text
-        text2 = doc2.text
+        ents1 = set((ent.text.lower(), ent.label_) for ent in doc1.ents)
+        ents2 = set((ent.text.lower(), ent.label_) for ent in doc2.ents)
         
-        if not text1 or not text2:
+        if not ents1 and not ents2:
+            return 1.0
+        elif not ents1 or not ents2:
             return 0.0
         
-        ents1 = self.ner_model(text1)
-        ents2 = self.ner_model(text2)
-        
-        def get_entity_types(ents):
-            return set(ent['entity'] for ent in ents)
-        
-        types1 = get_entity_types(ents1)
-        types2 = get_entity_types(ents2)
-        
-        return len(types1.intersection(types2)) / max(len(types1), len(types2)) if max(len(types1), len(types2)) > 0 else 1.0
+        return len(ents1.intersection(ents2)) / max(len(ents1), len(ents2))
 
     def compare_sentiment(self, doc1: Doc, doc2: Doc) -> float:
         def get_sentiment(doc):
@@ -219,8 +218,9 @@ class TextAnalyzer:
         return 1 - abs(sent1 - sent2)
 
     def semantic_similarity(self, text1: str, text2: str) -> float:
-        embeddings = self.sentence_model.encode([text1, text2])
-        return cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+        emb1 = self.get_embedding(text1)
+        emb2 = self.get_embedding(text2)
+        return cosine_similarity([emb1], [emb2])[0][0]
 
     def syntactic_similarity(self, doc1: Doc, doc2: Doc) -> float:
         pos1 = [token.pos_ for token in doc1 if token.pos_ != ""]
@@ -246,17 +246,14 @@ class TextAnalyzer:
         score2 = textstat.flesch_reading_ease(text2)
         return 1 - abs(score1 - score2) / 100  # Normalize to [0, 1]
 
-    def compare_topics(self, text1: str, text2: str) -> float:
-        candidate_labels = ["science", "nature", "discovery", "research", "technology", "environment", "health", "medicine", "biology", "physics", "chemistry", "astronomy", "geology", "ecology", "climate", "energy", "sustainability", "innovation", "engineering", "mathematics", "education", "society", "culture", "politics", "economics", "history", "philosophy", "religion", "psychology", "sociology", "anthropology", "linguistics", "literature", "art", "music", "film", "theater", "television", "sports", "games", "fashion", "food", "travel", "lifestyle", "health", "fitness", "wellness", "beauty", "parenting", "relationships", "dating", "marriage", "family", "children", "pets", "home", "garden", "decor", "cooking", "baking", "crafts", "DIY", "furniture", "fashion", "style", "shopping", "beauty", "hair", "makeup", "skincare", "nails", "fitness", "exercise", "nutrition", "diet", "wellness", "mental health", "meditation", "yoga", "self-care", "self-improvement", "motivation", "inspiration", "productivity", "success", "leadership", "management", "entrepreneurship", "business", "marketing", "sales", "finance", "investing", "economics", "technology", "innovation", "startups", "work", "career", "jobs", "interviews", "resumes", "networking", "education", "learning", "teaching", "students", "schools", "college", "university", "online learning", "e-learning", "edtech", "classroom", "homework", "exams", "studying", "research", "science", "technology", "engineering", "mathematics", "STEM", "coding", "programming", "software", "hardware", "data", "analytics", "machine learning", "artificial intelligence", "robotics", "automation", "cybersecurity", "networking", "cloud computing", "blockchain", "fintech", "healthtech", "biotech", "agritech", "cleantech", "energy", "sustainability", "environment", "climate", "conservation", "recycling", "renewables", "green", "organic", "natural", "wildlife", "biodiversity", "ecosystems", "pollution", "waste", "plastic", "oceans", "forests", "deserts", "mountains", "rivers", "lakes", "parks", "gardens", "urban", "rural", "global", "local", "community", "society", "culture", "politics", "government", "economy", "business", "industry", "commerce", "trade", "markets", "finance", "banking", "investing", "insurance", "taxes", "budgets", "debt", "wealth", "poverty", "inequality", "justice", "law", "crime", "punishment", "rights", "freedom", "democracy", "dictatorship", "monarchy", "republic", "federalism", "parliament", "presidency", "congress", "courts", "lawyers", "judges", "police", "military", "security", "defense", "diplomacy", "war", "peace"]
-        result1 = self.zero_shot_classifier(text1, candidate_labels)
-        result2 = self.zero_shot_classifier(text2, candidate_labels)
+    def compare_topics(self, doc1: Doc, doc2: Doc) -> float:
+        def get_top_words(doc, n=10):
+            return [token.text.lower() for token in doc if token.is_alpha and not token.is_stop][:n]
         
-        scores1 = dict(zip(result1['labels'], result1['scores']))
-        scores2 = dict(zip(result2['labels'], result2['scores']))
+        top_words1 = set(get_top_words(doc1))
+        top_words2 = set(get_top_words(doc2))
         
-        similarity = sum(scores1[label] * scores2[label] for label in candidate_labels)
-        return similarity / (sum(scores1.values()) * sum(scores2.values())) ** 0.5
-
+        return len(top_words1.intersection(top_words2)) / max(len(top_words1), len(top_words2))
 
     def compare_writing_style(self, text1: str, text2: str) -> float:
         def get_style_features(text):
@@ -325,8 +322,8 @@ class TextAnalyzer:
         return self.semantic_similarity(doc1.text, doc2.text)
 
     def compare_factual_consistency(self, doc1: Doc, doc2: Doc) -> float:
-        facts1 = set((ent.text, ent.label_) for ent in doc1.ents)
-        facts2 = set((ent.text, ent.label_) for ent in doc2.ents)
+        facts1 = set((ent.text.lower(), ent.label_) for ent in doc1.ents)
+        facts2 = set((ent.text.lower(), ent.label_) for ent in doc2.ents)
         
         if not facts1 and not facts2:
             return 1.0
@@ -334,6 +331,7 @@ class TextAnalyzer:
             return 0.0
         
         return len(facts1.intersection(facts2)) / max(len(facts1), len(facts2))
+
 
     def compare_figurative_language(self, doc1: Doc, doc2: Doc) -> float:
         if doc1.text == doc2.text:
@@ -369,11 +367,14 @@ class TextAnalyzer:
         chain1 = build_chain(doc1)
         chain2 = build_chain(doc2)
         
-        embeddings1 = self.sentence_model.encode(chain1)
-        embeddings2 = self.sentence_model.encode(chain2)
+        if not chain1 or not chain2:
+            return 0.0
+        
+        embeddings1 = self.sentence_model.encode(chain1, show_progress_bar=False)
+        embeddings2 = self.sentence_model.encode(chain2, show_progress_bar=False)
         
         similarity_matrix = cosine_similarity(embeddings1, embeddings2)
-        return np.mean(np.max(similarity_matrix, axis=1))
+        return float(np.mean(np.max(similarity_matrix, axis=1)))
     
     def compare_coreference(self, doc1: Doc, doc2: Doc) -> float:
         if not self.coref_available:
