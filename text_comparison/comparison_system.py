@@ -134,8 +134,19 @@ if __name__ == "__main__":
     
     text1 = "The quick brown fox jumps over the lazy dog. It was a sunny day in the forest."
     text2 = "The quick brown fox jumps over the lazy cat. It was a sunny day in the forest."
+    print(TextAnalyzer.compare_topics(text1, text2))
     
-    results = comparator.compare_texts(text1, text2)
-    interpretation = comparator.interpret_results(results)
+    # results = comparator.compare_texts(text1, text2)
+    # interpretation = comparator.interpret_results(results)
     
-    print(interpretation)
+    # print(interpretation)
+    
+    # #default pipelines
+    # analyzer.check_summary(original, summary)
+    # analyzer.check_paraphrase(original, paraphrased)
+    # analyzer.check_similarity(text1, text2)
+    
+    # #single metrics
+    # analyzer.metric.
+    
+    
