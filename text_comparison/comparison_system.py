@@ -133,7 +133,7 @@ if __name__ == "__main__":
     comparator = TextComparisonSystem()
     
     text1 = "The quick brown fox jumps over the lazy dog. It was a sunny day in the forest."
-    text2 = "The quick brown fox jumps over the lazy cat. It was a sunny day in the forest."
+    text2 = "The fast brown fox jumps over the lazy dog. It was a sunny day in the forest."
     
     results = comparator.compare_texts(text1, text2)
     interpretation = comparator.interpret_results(results)
