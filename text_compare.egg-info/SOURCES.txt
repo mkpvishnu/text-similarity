@@ -1,0 +1,13 @@
+LICENSE
+README.md
+setup.py
+text_compare/__init__.py
+text_compare/analyzer.py
+text_compare/metrics.py
+text_compare/pipelines.py
+text_compare/utils.py
+text_compare.egg-info/PKG-INFO
+text_compare.egg-info/SOURCES.txt
+text_compare.egg-info/dependency_links.txt
+text_compare.egg-info/requires.txt
+text_compare.egg-info/top_level.txt
