@@ -1,3 +1,3 @@
 # text-Comparison
 
-### This library provides tools for comparing texts across various tasks such as summarization, similarity assessment, paraphrase detection, and contradiction detection.
+TextCompare is a Python library for comparing and analyzing text similarity. It provides various metrics and pipelines for text comparison tasks.
