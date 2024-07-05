@@ -1,7 +1,7 @@
-spacy==3.3.3
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.3.0/en_core_web_sm-3.3.0-py3-none-any.whl
-torch==1.12.1
-transformers==4.29.2
-sentence-transformers==2.2.2
-numpy==1.23.5
-bert-score==0.3.13
+spacy
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+torch
+transformers
+sentence-transformers
+numpy
+bert-score
