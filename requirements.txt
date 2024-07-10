@@ -1,5 +1,9 @@
-spacy>=3.0.0
-numpy>=1.20.0
-sentence-transformers>=2.0.0
-en_core_web_lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl
-pytest>=6.2.0
+spacy
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0-py3-none-any.whl
+torch
+transformers
+sentence-transformers
+numpy
+bert-score
+openai==0.28.0
+sklearn
